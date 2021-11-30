@@ -1,0 +1,123 @@
+/******************************
+* Esquema de Tradução
+* Disciplina: Compiladores
+* Professor: Alexei Manso Correa Machado
+*
+* Pontifícia Universidade Católica de Minas Gerais
+* Coração Eucarístico
+*
+* Grupo(G11):
+* Arthur Henrique(602718)
+* Pedro Rodrigues(594451)
+*
+*******************************/
+Exp      -> ExpS1(1)[(=(2) | !=(3) | <(4) | >(5) | <=(6) | >=(7)) ExpS2(8)]
+(1) {exp_tipo = exps1_tipo; exp_tam = exps1_tam}
+(2) {exp_operador = IGUAL; exp_tipo = TIPO_BOOL}
+(3) {exp_operador = DIFERENTE; exp_tipo = TIPO_BOOL}
+(4) {exp_operador = MENOR; exp_tipo = TIPO_BOOL}
+(5) {exp_operador = MAIOR; exp_tipo = TIPO_BOOL}
+(6) {exp_operador = MENOR_IGUAL; exp_tipo = TIPO_BOOL}
+(7) {exp_operador = MAIOR_IGUAL; exp_tipo = TIPO_BOOL}
+(8) {verificaTipos(exps1_tipo, exps2_tipo, exp_operador)}
+
+
+ExpS     -> [+ | -] T1(1)(6) {(+(2) | -(3) | "||"(4)) T2(7)(5) }
+(1) {exps_tipo = t1_tipo; exps_tam = t1_tam}
+(2) {exps_operador = MAIS; ehNumero = true}
+(3) {exps_operador = MENOS; ehNumero = true}
+(4) {exps_operador = OR; exps_tipo = TIPO_BOOL}
+(5) {verificaTipos(t1_tipo, t2_tipo, exps_operador)}
+(6) {se ((exps_tipo != TIPO_INT && exps_tipo != TIPO_FLOAT) && ehNumero) entao ERRO}
+(7) {se (exps_operador == MAIS || exps_operador = MENOS) entao exps_tipo = calculaExp_tipo(t1_tipo, t2_tipo)}
+
+
+T        -> F1(1) {(*(2) | &&(3) | /(4) | "div"(5) | "mod"(6) ) F2(8)(7)}
+(1) {t_tipo = f1_tipo; t_tam = f1_tam}
+(2) {t_operador = ASTERISCO}
+(3) {t_operador = AND; t_tipo = TIPO_BOOL}
+(4) {t_operador = BARRA}
+(5) {t_operador = DIV}
+(6) {t_operador = MOD}
+(7) {verificaTipos(f1_tipo, f2_tipo, t_operador)}
+(8) {se (t_operador == BARRA) entao t_tipo = TIPO_FLOAT senao se (t_operador == ASTERISCO) entao t_tipo = calculaExp_Tipo(f1_tipo, f2_tipo)}
+
+
+F        -> !F1(1) | "("Exp(2)")" | ("int"(6) | "float"(7))"("Exp(8)")" | const(3) | id(4)["["Exp(5)"]"]
+(1) {se (f1_tipo != TIPO_BOOL) entao ERRO senao f_tipo = f1_tipo; f_tam = f1_tam; f_valor = f1_valor}
+(2) {f_tipo = exp_tipo; f_tam = exp_tam; f_valor = exp_valor}
+(3) {f_tipo = const_tipo; f_tam = const_tam; f_valor = const_valor}
+(4) {se (id_tipo == TIPO_VAZIO) entao ERRO senao f_tipo = id_tipo; f_tam = id_tam}
+(5) {se (exp_tipo != TIPO_INT || id_tipo != TIPO_STR) entao ERRO senao f_tipo = TIPO_CHAR; f_tam = exp_tam}
+(6) {f_tipo = TIPO_INT}
+(7) {f_tipo = TIPO_FLOAT}
+(8) {se (exp_tipo != INT && exp_tipo != FLOAT) entao ERRO senao f_tam = exp_tam; f_valor = exp_valor}
+
+
+S        -> {Dec | (Cmd | CmdS)}
+
+
+Dec      -> ("int"(1) | "float"(2) | "string"(3) | "char"(4)) {id(5) ["<-"[-](11)const(12)(6)](7)  [,]}+ ; | "const"(8) id(9) = [-](11)const(12)(10)(7);
+(1) {dec_tipo = TIPO_INT; dec_classe = CLASSE_VAR}
+(2) {dec_tipo = TIPO_FLOAT; dec_classe = CLASSE_VAR}
+(3) {dec_tipo = TIPO_STR; dec_classe = CLASSE_VAR}
+(4) {dec_tipo = TIPO_CHAR; dec_classe = CLASSE_VAR}
+(5) {se(id_tipo != TIPO_VAZIO) entao ERRO senao id_tipo = dec_tipo; id_classe = dec_classe}
+(6) {verificaCompatibilidadeAtr_Dec(id_tipo, const_tipo)}
+(7) {atualizaTS()}
+(8) {dec_classe = CLASSE_CONST}
+(9) {se (id_tipo != TIPO_VAZIO) entao ERRO senao id_classe = dec_classe}
+(10) {dec_tipo = const_tipo}
+(11) {se token_lido == MENOS entao ehNumero = true}
+(12) {se (ehNumero && (const_tipo != TIPO_INT && const_tipo != TIPO_FLOAT) entao ERRO }
+
+
+CmdS     -> "{" {Cmd} "}" 
+Cmd      -> CmdWhile | CmdIf | CmdRead | CmdWrite | CmdAtr | CmdNull
+
+
+CmdWhile -> "while" Exp(1) (Cmd | CmdS)
+(1) {se exp_tipo != TIPO_BOOL entao ERRO}
+
+
+CmdIf    -> "if" Exp(1) (Cmd | CmdS) ["else" (Cmd | CmdS)]
+(1) {se exp_tipo != TIPO_BOOL entao ERRO}
+
+
+CmdRead  -> "readln" "(" id(1)(2) ")";
+(1) {se (id_tipo == TIPO_VAZIO) entao ERRO} 
+(2) {se (id_classe == CLASSE_CONST) entao ERRO}
+
+CmdWrite -> ("write" | "writeln") "(" {Exp(1) [,]}+ ")";
+(1) {se (exp_tipo == TIPO_VAZIO) entao ERRO}
+
+
+CmdAtr   -> id(1)(2)[ "["Exp1(3)"]" ] "<-" Exp2(4);
+(1) {se (id_tipo == TIPO_VAZIO) entao ERRO senao cmdatr_tipo = id_tipo}
+(2) {se (id_classe == CLASSE_CONST) entao ERRO}
+(3) {se (exp1_tipo != TIPO_INT || id_tipo != TIPO_STR) entao ERRO senao ehVetor = true}
+(4) {se (ehVetor && exp2_tipo != TIPO_CHAR) entao ERRO senao se !ehVetor entao verificaCompatibilidadeAtr_Dec(id_tipo, exp2_tipo)}
+
+CmdNull  -> ;
+
+/****************************************************************************************************/
+
+Gramática:
+
+Exp      -> ExpS[(= | != | < | > | <= | >=) ExpS]
+ExpS     -> [+ | -] T {(+ | - | "||") T }
+T        -> F {(* | && | / | "div" | "mod" ) F }
+F        -> !F | "("Exp")" | ("int" | "float")"("Exp")" | const | id["["Exp"]"]
+
+S        -> {Dec | (Cmd | CmdS)}
+
+Dec      -> ("int" | "float" | "string" | "char") {id ["<-"[-]const]   [,]}+ ; | "const" id = [-]const;
+
+CmdS     -> "{" {Cmd} "}" 
+Cmd      -> CmdWhile | CmdIf | CmdRead | CmdWrite | CmdAtr | CmdNull
+CmdWhile -> "while" Exp (Cmd | CmdS)
+CmdIf    -> "if" Exp (Cmd | CmdS) ["else" (Cmd | CmdS)]
+CmdRead  -> "readln" "(" id ")";
+CmdWrite -> ("write" | "writeln") "(" {Exp [,]}+ ")";
+CmdAtr   -> id[ "["Exp"]" ] "<-" Exp;
+CmdNull  -> ;
